@@ -47,7 +47,6 @@ async def check_reminders():
                 logger.info("📅 Плановое обновление базы знаний...")
                 asyncio.create_task(kb_service.update_kb())
                 last_kb_update = now_ts
-            # -----------------------------
 
             if not is_working_hours():
                 logger.debug("🌙 Ночь в Москве. Спим 10 минут...")
@@ -85,8 +84,6 @@ async def check_reminders():
                         )
 
                         if success:
-                            # 1. Формируем "богатую" запись ассистента
-                            # Для напоминания state и new_state совпадают (мы не двигаем граф)
                             new_entry = {
                                 "role": "assistant",
                                 "state": dialogue.current_state,
@@ -96,8 +93,6 @@ async def check_reminders():
                                 "timestamp_msk": get_msk_time(),
                                 "extracted_data": dict(dialogue.extracted_data or {})
                             }
-                            
-                            # 2. Обновляем модель
                             dialogue.reminder_level = next_level
                             dialogue.last_message_at = now_utc
                             dialogue.history = list(dialogue.history) + [new_entry]

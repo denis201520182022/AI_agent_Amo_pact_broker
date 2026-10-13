@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # База данных PostgreSQL
+  # PostgreSQL
   db:
     image: postgres:15-alpine
     container_name: ai_broker_db
@@ -20,13 +20,13 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis для очередей и дебоунса
+  # Redis
   redis:
     image: redis:7-alpine
     container_name: ai_broker_redis
     restart: always
 
-  # FastAPI сервер
+  # FastAPI
   api:
     build: .
     container_name: ai_broker_api
@@ -37,7 +37,7 @@ services:
     volumes:
       - .:/app
       - ./logs:/app/logs
-      - ./debug_logs:/app/debug_logs # Добавил папку для твоих новых логов
+      - ./debug_logs:/app/debug_logs #
     env_file:
       - .env
     environment:
@@ -54,7 +54,6 @@ services:
     build: .
     container_name: ai_broker_worker
     restart: always
-    # ДОБАВИЛИ --workers 1
     command: taskiq worker src.worker:broker --workers 1 --ack-type when_executed
     volumes:
       - .:/app
@@ -69,7 +68,7 @@ services:
       redis:
         condition: service_started
 
-  # Telegram Bot процесс (Админка)
+  # Telegram Bot 
   tg_bot:
     build: .
     container_name: ai_broker_tg
@@ -83,7 +82,7 @@ services:
     environment:
       - PYTHONPATH=/app
     depends_on:
-      db: # Бот теперь зависит от БД (статистика и баланс)
+      db:
         condition: service_healthy
       redis:
         condition: service_started

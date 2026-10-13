@@ -8,12 +8,10 @@ from src.core.logging import logger
 
 class OpenAIService:
     def __init__(self):
-        # Настройка прокси через httpx
         proxy_url = settings.proxy_url
         
         if proxy_url:
             logger.info(f"🌐 OpenAI service is using proxy: {settings.PROXY_HOST}")
-            # Создаем кастомный HTTP-клиент с прокси
             http_client = httpx.AsyncClient(
                 proxy=proxy_url,
                 timeout=30.0
@@ -41,8 +39,6 @@ class OpenAIService:
         Принимает историю и инструкцию, возвращает валидированный Pydantic объект.
         """
         try:
-            # Формируем полный список сообщений для анализа
-            # Мы добавляем инструкцию как последнее сообщение, чтобы ИИ сфокусировался на задаче
             full_messages = [
                 {"role": "system", "content": system_prompt},
                 *messages,
@@ -53,12 +49,10 @@ class OpenAIService:
                 model=self.model,
                 messages=full_messages,
                 response_format=response_model,
-                temperature=0.0 # Для анализаторов всегда 0 для точности
+                temperature=0.0
             )
 
             result = completion.choices[0].message.parsed
-            
-            # Логируем расход (полезно для БД)
             usage = completion.usage
             logger.debug(f"📊 [AI-1 Analyze] Tokens: {usage.total_tokens} | Step: {instruction[:30]}...")
             
@@ -79,12 +73,9 @@ class OpenAIService:
         Возвращает человечный ответ на основе истории и промпта.
         """
         try:
-            # Конструируем контекст для генератора
             full_messages = [
                 {"role": "system", "content": system_prompt}
             ]
-            
-            # Если есть доп. инструкция (например, вставить ссылку), добавляем её
             if extra_instruction:
                 full_messages.append({"role": "system", "content": f"ВАЖНОЕ ТРЕБОВАНИЕ К ОТВЕТУ: {extra_instruction}"})
             
@@ -93,7 +84,7 @@ class OpenAIService:
             completion = await self.client.chat.completions.create(
                 model=self.model,
                 messages=full_messages,
-                temperature=0.7 # Для генерации текста лучше чуть выше 0
+                temperature=0.7
             )
 
             response_text = completion.choices[0].message.content
@@ -107,5 +98,4 @@ class OpenAIService:
             logger.error(f"❌ Ошибка OpenAI Генератора: {str(e)}", exc_info=True)
             return "Извините, произошла техническая ошибка. Пожалуйста, попробуйте позже."
 
-# Создаем синглтон
 openai_service = OpenAIService()

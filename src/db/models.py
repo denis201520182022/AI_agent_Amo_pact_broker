@@ -23,7 +23,6 @@ class Account(Base):
     
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100))
-    # {client_id, client_secret, access_token, refresh_token, subdomain}
     auth_data: Mapped[dict] = mapped_column(JSONB, server_default='{}')
     is_active: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

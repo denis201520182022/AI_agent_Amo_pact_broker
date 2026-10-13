@@ -10,7 +10,6 @@ from src.core.logging import logger
 from aiogram.client.session.aiohttp import AiohttpSession
 class TelegramService:
     def __init__(self):
-        # --- ЛОГИКА ПРОКСИ ---
         session = None
         if settings.proxy_url:
             logger.info(f"🌐 Telegram Bot is using proxy: {settings.PROXY_HOST}")
@@ -85,5 +84,4 @@ class TelegramService:
         except Exception as e:
             logger.error(f"Ошибка отправки карточки в ТГ: {e}")
 
-# Синглтон для уведомлений
 tg_service = TelegramService()

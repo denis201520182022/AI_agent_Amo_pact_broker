@@ -32,16 +32,12 @@ class PromptManager:
             Steps.CITY: UserBasicInfoSchema,
             Steps.MAIN_MENU: MenuSelectionSchema,
             Steps.CONSULT_INFO: ConsultationConsentSchema,
-            
-            # Все стоп-факторы используют одну схему (теперь с полем is_active)
             Steps.SF_SENIORITY: StopFactorCheckSchema,
             Steps.SF_DELAYS: StopFactorCheckSchema,
             Steps.SF_FSSP: StopFactorCheckSchema,
             Steps.SF_MFO: StopFactorCheckSchema,
             Steps.SF_BANKRUPTCY: StopFactorCheckSchema,
             
-            # Квалификация (предложение залога при стоп-факторах)
-            # Используем CollateralDetailsSchema, так как там есть флаг no_collateral
             Steps.QUALIFY_RESULT: CollateralDetailsSchema,
             
             Steps.SELECT_CREDIT_TYPE: CreditTypeSelectionSchema,
@@ -72,10 +68,7 @@ class PromptManager:
         """
         Возвращает схему и инструкцию для Анализатора (AI-1)
         """
-        # Получаем схему из маппинга. Если шага нет в маппинге — базовая схема (BaseAnalysis).
         schema = self._schema_map.get(step_id, BaseAnalysis)
-        
-        # Получаем инструкцию из YAML
         step_config = self.prompts.get("steps", {}).get(step_id, {})
         instruction = step_config.get("analyzer_instruction", "Проанализируй ответ пользователя.")
         

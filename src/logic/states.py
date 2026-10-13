@@ -3,7 +3,6 @@ from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
 
 # --- СОСТОЯНИЕ ГРАФА (LangGraph State) ---
-
 class DialogueState(TypedDict):
     """
     Объект состояния, который проходит через все узлы графа.
@@ -38,7 +37,6 @@ class DialogueState(TypedDict):
     final_destination: Optional[str] # Куда перевести сделку в CRM (Курс, Консультация и т.д.)
 
 # --- СХЕМЫ СТРУКТУРНОГО ВЫВОДА ДЛЯ АНАЛИЗАТОРА (AI-1) ---
-
 class BaseAnalysis(BaseModel):
     """Базовые поля для любого ответа анализатора"""
     step_completed: bool = Field(
@@ -127,8 +125,8 @@ class DocumentWaitSchema(BaseAnalysis):
     user_comment: Optional[str] = Field(
         None, description="Любой важный комментарий пользователя по документам (например, 'скину позже', 'у меня только один отчет')"
     )
+    
 # --- СЛОВАРЬ ШАГОВ (Константы для навигации) ---
-
 class Steps:
     # База
     CONSENT = "STEP_CONSENT"

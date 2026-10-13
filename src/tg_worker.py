@@ -5,7 +5,6 @@ from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from sqlalchemy import select, func, update
-# Добавь эту строку в начало файла к остальным импортам aiogram
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from src.services.telegram.tg import tg_service
 from src.core.logging import setup_logging
@@ -15,36 +14,29 @@ from src.core.config import settings
 
 logger = setup_logging("tg_bot")
 
-# --- СОСТОЯНИЯ ДЛЯ ВВОДА ДАННЫХ ---
 class AdminStates(StatesGroup):
     input_balance = State()
     input_tariff = State()
 
 dp = Dispatcher()
 
-# --- MIDDLEWARE ДЛЯ ПРОВЕРКИ ДОСТУПА ---
 @dp.message.outer_middleware()
 async def auth_middleware(handler, event, data):
     user_id = event.from_user.id
     if user_id not in tg_service.user_ids:
         logger.warning(f"🚫 Попытка доступа от постороннего: {user_id}")
-        return # Просто игнорим
+        return 
     return await handler(event, data)
 
-# --- КЛАВИАТУРА ГЛАВНОГО МЕНЮ ---
 def get_main_kb(user_id: int):
     builder = InlineKeyboardBuilder()
-    
-    # Кнопка статистики доступна всем разрешенным
     builder.button(text="📊 Статистика", callback_data="stats")
-    
-    # Кнопки управления доступны только админам
     if tg_service.is_admin(user_id):
         builder.button(text="💰 Пополнить баланс", callback_data="add_balance")
         builder.button(text="⚙️ Изменить тариф", callback_data="set_tariff")
         # builder.button(text="🛑 Остановка", callback_data="system_stop")
     
-    builder.adjust(1) # Делаем кнопки в столбик для красоты
+    builder.adjust(1) 
     return builder.as_markup()
 
 @dp.message(CommandStart())
@@ -59,7 +51,6 @@ async def cmd_start(message: types.Message):
 @dp.callback_query(F.data == "stats")
 async def show_stats(callback: types.CallbackQuery):
     async with async_session_maker() as session:
-        # Считаем данные из БД
         total_dialogs = await session.scalar(select(func.count(Dialogue.id)))
         active_dialogs = await session.scalar(select(func.count(Dialogue.id)).where(Dialogue.status == "active"))
         app_settings = await session.scalar(select(AppSettings).limit(1))
@@ -87,7 +78,6 @@ async def process_balance(message: types.Message, state: FSMContext):
         async with async_session_maker() as session:
             stg = await session.scalar(select(AppSettings).limit(1))
             stg.balance = float(stg.balance) + amount
-            # Сбрасываем флаг алерта, если пополнили выше порога
             if stg.balance > stg.low_balance_threshold:
                 stg.is_low_balance_alert_sent = False
             await session.commit()
@@ -109,7 +99,6 @@ async def process_tariff(message: types.Message, state: FSMContext):
         new_cost = float(message.text)
         async with async_session_maker() as session:
             stg = await session.scalar(select(AppSettings).limit(1))
-            # Обновляем JSON поле tariffs
             new_tariffs = dict(stg.tariffs)
             new_tariffs['dialog_cost'] = new_cost
             stg.tariffs = new_tariffs
@@ -125,7 +114,7 @@ async def process_tariff(message: types.Message, state: FSMContext):
 async def system_stop(callback: types.CallbackQuery):
     await callback.message.answer("🛑 <b>Процесс бота завершается...</b>", parse_mode="HTML")
     logger.critical("!!! БОТ ОСТАНОВЛЕН ЧЕРЕЗ АДМИН-ПАНЕЛЬ !!!")
-    sys.exit(0) # Завершает контейнер, docker-compose его перезапустит, если стоит restart: always
+    sys.exit(0)
 
 async def main():
     logger.info("🚀 Запуск Telegram Admin Bot (с поддержкой прокси)...")

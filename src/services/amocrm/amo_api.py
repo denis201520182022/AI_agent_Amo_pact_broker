@@ -96,8 +96,6 @@ class AmoCRMAPI:
         note_type: common (текст), service_message (системное)
         """
         url = f"{self.base_url}/leads/{lead_id}/notes"
-        
-        # Структура зависит от типа примечания согласно доке
         params = {"text": text}
         if note_type in ["service_message", "extended_service_message"]:
             params["service"] = settings.PROJECT_NAME
@@ -149,5 +147,5 @@ class AmoCRMAPI:
             logger.error(f"🚨 Сбой при GET /leads/{lead_id}: {e}")
             raise
     
-# Создаем синглтон
+
 amo_api = AmoCRMAPI()

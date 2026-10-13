@@ -1,15 +1,13 @@
 import os
 import json
 from datetime import datetime
-from typing import Any  # <--- ДОБАВЬ ЭТУ СТРОКУ
+from typing import Any
 
 class DialogueLogger:
     def __init__(self, conversation_id: str):
         self.conversation_id = conversation_id
         self.log_dir = "debug_logs"
         self.file_path = os.path.join(self.log_dir, f"{conversation_id}.txt")
-        
-        # Создаем папку, если её нет
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir)
 
@@ -34,7 +32,6 @@ class DialogueLogger:
                         f.write(str(value))
                     f.write("\n")
             elif isinstance(content, (dict, list)):
-                # Для списков или если dict передан не как основной контейнер
                 f.write(json.dumps(content, indent=2, ensure_ascii=False))
             else:
                 f.write(str(content))

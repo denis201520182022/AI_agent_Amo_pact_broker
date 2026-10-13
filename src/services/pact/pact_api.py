@@ -14,8 +14,6 @@ class PactAPI:
         self.token = settings.PACT_API_TOKEN
         self.company_id = settings.PACT_COMPANY_ID
         self.base_url = "https://api.pact.im/api/p2"
-        
-        # Общие заголовки для всех запросов
         self.headers = {
             "X-Private-Api-Token": self.token,
             "Accept": "application/json"
@@ -24,7 +22,6 @@ class PactAPI:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
-        # Не ретраим, если получили 403 (запрещено), так как это не ошибка сети
         retry=retry_if_exception_type((httpx.ConnectError, httpx.TimeoutException)),
         before_sleep=lambda retry_state: logger.info(f"♻️ Ретрай отправки в Пакт... Попытка {retry_state.attempt_number}"),
         reraise=True
@@ -72,7 +69,6 @@ class PactAPI:
                 response.raise_for_status()
 
         except httpx.HTTPStatusError as e:
-            # Если мы попали сюда, значит это не 403 в тесте, а другая ошибка (например 500)
             raise e
         except Exception as e:
             if settings.TEST:
@@ -90,5 +86,4 @@ class PactAPI:
         # TODO: Реализовать загрузку файлов через POST /attachments
         pass
 
-# Создаем синглтон для использования в воркере
 pact_api = PactAPI()

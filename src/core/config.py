@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     TEST: bool = False
     TEST_MODE: bool = True  # Включить/выключить тестовый режим в диалогах
     TEST_TRIGGER: str = "/up" 
+
     # --- Project ---
     PROJECT_NAME: str = "AI Broker Bot"
     DEBUG: bool = False
@@ -27,7 +28,6 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def database_url(self) -> str:
-        # Используем asyncpg для асинхронной работы SQLAlchemy
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     # --- Redis ---
@@ -44,7 +44,6 @@ class Settings(BaseSettings):
     # --- amoCRM ---
     AMO_SUBDOMAIN: str
     AMO_LONG_TERM_TOKEN: str
-    # Pydantic автоматически распарсит строку вида [1, 2, 3] из .env в список int
     ALLOWED_PIPELINES: List[int] = Field(default_factory=list)
 
     # --- Telegram ---
@@ -56,9 +55,6 @@ class Settings(BaseSettings):
     TELEGRAM_USER_IDS: Optional[str] = None  
     TELEGRAM_REPORT_CHAT_ID: Optional[str] = None  # ID чата для карточек-отчетов
     
-
-
-
     # --- Proxy ---
     PROXY_HOST: Optional[str] = None
     PROXY_PORT: Optional[int] = None
@@ -83,5 +79,4 @@ class Settings(BaseSettings):
     # --- Security ---
     WEBHOOK_SECRET: str
 
-# Создаем экземпляр настроек
 settings = Settings()

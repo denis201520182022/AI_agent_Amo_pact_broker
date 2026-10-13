@@ -6,7 +6,7 @@ from src.core.config import settings
 
 engine = create_async_engine(
     settings.database_url,
-    echo=False, # Поставь True для дебага SQL запросов
+    echo=False,
     pool_size=10,
     max_overflow=20
 )

@@ -12,7 +12,6 @@ from src.services.openai.openai_api import openai_service
 from src.core.logging import logger
 from src.utils.dialogue_logger import DialogueLogger
 
-# --- ЗАГРУЗКА НАСТРОЕК ДЛЯ ПОДСТАНОВКИ В ПРОМПТЫ ---
 def load_settings_data() -> Dict[str, Any]:
     path = os.path.join("config", "settings.yaml")
     if not os.path.exists(path):
@@ -22,46 +21,34 @@ def load_settings_data() -> Dict[str, Any]:
 
 SETTINGS_DATA = load_settings_data()
 
-# --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
 
 def format_instruction(text: str, state_data: Dict[str, Any] = None) -> str:
     """
     Подставляет ссылки, цены и динамические данные из состояния в текст промпта.
     """
     state_data = state_data or {}
-    
-    # Подготовка списка стоп-факторов для вставки в текст (если они есть)
     found_factors = state_data.get('found_factors', [])
     factors_str = ", ".join(found_factors) if found_factors else "не указаны"
 
     try:
         return text.format(
-            # Ссылки из settings.yaml
             pd_link=SETTINGS_DATA.get('links', {}).get('privacy_policy', ''),
             course_link=SETTINGS_DATA.get('links', {}).get('author_course', ''),
             tg_link=SETTINGS_DATA.get('links', {}).get('telegram_work_chat', ''),
-            # Визитка (берем из ссылок или отдельного поля, если есть)
             vizitka=SETTINGS_DATA.get('links', {}).get('vizitka_text', ''), 
-            
-            # Ссылки БКИ
             bki_links=f"{SETTINGS_DATA.get('links', {}).get('bki_scoring', '')}, "
                       f"{SETTINGS_DATA.get('links', {}).get('bki_credistory', '')}, "
                       f"{SETTINGS_DATA.get('links', {}).get('bki_nbki', '')}",
-            
-            # Цены и лимиты
             paid_consult_price=SETTINGS_DATA.get('pricing', {}).get('paid_consultation', 10000),
             max_loan=SETTINGS_DATA.get('limits', {}).get('max_consumer_loan_amount', 1500000),
-            
-            # Динамические данные из состояния
             found_factors=factors_str,
-            files_count="{files_count}"  # Оставляем для финальной подстановки в узле генерации
+            files_count="{files_count}"
         )
     except Exception as e:
         logger.error(f"Ошибка форматирования инструкции: {e}")
         return text
 
 # --- УЗЛЫ ГРАФА (NODES) ---
-
 async def analyze_node(state: DialogueState) -> Dict[str, Any]:
     """Узел 1: Анализ входящего сообщения через AI-1 (Structured Output)"""
     conv_id = state['pact_conversation_id']
@@ -78,13 +65,11 @@ async def analyze_node(state: DialogueState) -> Dict[str, Any]:
         if schema is BaseModel:
             schema_to_log = {"info": "BaseModel (empty)"}
         else:
-            # model_json_schema() - это метод класса в Pydantic v2
             schema_to_log = schema.model_json_schema()
     except Exception as e:
         logger.warning(f"⚠️ Не удалось распарсить схему {schema} для логов: {e}")
         schema_to_log = {"info": "Could not parse schema", "error": str(e), "class": str(schema)}
 
-    # ЛОГИРУЕМ ЗАПРОС К АНАЛИЗАТОРУ
     d_logger.log_section("AI-1 ANALYZER REQUEST", {
         "current_step": state['current_step'],
         "system_prompt": analyzer_sys,
@@ -93,7 +78,6 @@ async def analyze_node(state: DialogueState) -> Dict[str, Any]:
         "history_context_sent": state['messages'] 
     })
 
-    # 2. Вызов OpenAI
     analysis = await openai_service.analyze_message(
         messages=state['messages'][-3:], 
         response_model=schema,
@@ -107,7 +91,6 @@ async def analyze_node(state: DialogueState) -> Dict[str, Any]:
         "error": "OpenAI returned None"
     }
     
-    # ЛОГИРУЕМ ОТВЕТ АНАЛИЗАТОРА
     d_logger.log_section("AI-1 ANALYZER RESPONSE", analysis_dict)
     
     return {"analysis_result": analysis_dict}
@@ -122,42 +105,32 @@ async def logic_node(state: DialogueState) -> Dict[str, Any]:
     d_logger = DialogueLogger(conv_id)
     
     logger.info(f"⚙️ [Node: Logic] Processing logic for: {state['current_step']}")
-    
-    # Сохраняем состояние "ДО" для детального логгирования
     old_step = state['current_step']
     old_data = json.loads(json.dumps(state['extracted_data']))
 
     result = state.get('analysis_result') or {}
     current = state['current_step']
-    extracted = copy.deepcopy(state['extracted_data']) # Глубокая копия для безопасности
+    extracted = copy.deepcopy(state['extracted_data'])
     
     next_step = current 
     is_completed = False
     stop_factors_found = state.get('stop_factors_found', False)
     final_destination = state.get('final_destination') or extracted.get('final_destination')
-    
-    # Синхронизация: если есть направление, но нет метки воронки
     if not final_destination and extracted.get('direction'):
         mapping = {"consult": "consultation", "course": "course"}
         final_destination = mapping.get(extracted['direction'])
     
-    # Считаем файлы в реальном времени
     received_files = extracted.get('received_files', [])
     files_count = len(received_files)
     logger.info(f"📂 [Logic] Files in state: {files_count} ({received_files})")
 
-    # --- ПРИОРИТЕТ 1: ПРОВЕРКА СЧЕТЧИКА ФАЙЛОВ ---
-    # Если файлов 3 или более, мгновенно переходим к финалу, игнорируя остальную логику
     if files_count >= 3:
         logger.info(f"📚 Собрано {files_count} файла. Переход к завершению.")
         next_step = Steps.FINAL_HANDOVER
-        final_destination = "main" # Основная воронка (Кредиты)
+        final_destination = "main"
         is_completed = True
 
-    # --- ПРИОРИТЕТ 2: ОБРАБОТКА ВАЛИДНОГО ОТВЕТА (step_completed: true) ---
     elif result.get('step_completed'):
-        
-        # 1. Сбор базовых данных (Анкета)
         if current == Steps.CONSENT:
             if result.get('consent_given'):
                 extracted['consent_given'] = True
@@ -218,8 +191,6 @@ async def logic_node(state: DialogueState) -> Dict[str, Any]:
             if result.get('is_problematic'):
                 stop_factors_found = True
                 current_factors = extracted.get('found_factors', [])
-                
-                # Формируем красивое название фактора для анкеты
                 label = factor_key
                 if result.get('is_active'): # Если просрочка/МФО действующая
                     label = f"действующая {factor_key}"
@@ -435,5 +406,4 @@ def create_graph():
     # Компилируем граф
     return workflow.compile()
 
-# Экспортируем готовый объект графа для использования в воркере
 app_graph = create_graph()

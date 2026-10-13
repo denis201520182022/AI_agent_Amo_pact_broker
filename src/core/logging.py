@@ -22,7 +22,6 @@ def setup_logging(service_name: str):
     root_logger = logging.getLogger()
     root_logger.setLevel(log_level)
     
-    # Консоль добавляем только если её еще нет
     if not any(isinstance(h, logging.StreamHandler) for h in root_logger.handlers):
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setFormatter(CustomFormatter(CustomFormatter.fmt))
@@ -32,12 +31,10 @@ def setup_logging(service_name: str):
     project_logger.setLevel(log_level)
     project_logger.propagate = True 
 
-    # Удаляем старые ФАЙЛОВЫЕ хендлеры, чтобы не было дублей (api + worker)
     for h in project_logger.handlers[:]:
         if isinstance(h, RotatingFileHandler):
             project_logger.removeHandler(h)
 
-    # Добавляем файл
     file_path = os.path.join(LOGS_DIR, f"{service_name}.log")
     file_handler = RotatingFileHandler(
         file_path, 
@@ -49,7 +46,6 @@ def setup_logging(service_name: str):
     file_handler.setFormatter(CustomFormatter(CustomFormatter.fmt))
     project_logger.addHandler(file_handler)
 
-    # Тишим библиотеки
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
@@ -57,5 +53,4 @@ def setup_logging(service_name: str):
 
     return project_logger
 
-# Создаем базовый объект для импортов
 logger = logging.getLogger("src")

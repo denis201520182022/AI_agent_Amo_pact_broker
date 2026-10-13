@@ -9,7 +9,6 @@ class RedisManager:
     def __init__(self):
         self.redis: Optional[redis.Redis] = None
         self.url = settings.REDIS_URL
-        # Источник расписания для TaskIQ Scheduler
         self.scheduler = RedisScheduleSource(self.url)
 
     async def connect(self):
@@ -39,17 +38,9 @@ class RedisManager:
         """
         key = f"pact_buffer:{conversation_id}"
         try:
-            # Превращаем dict в строку JSON
             message_json = json.dumps(payload, ensure_ascii=False)
-            
-            # LPUSH добавляет в начало списка. 
-            # Результат выполнения lpush — это длина списка после вставки.
             list_len = await self.redis.lpush(key, message_json)
-            
-            # Устанавливаем TTL (1 час), чтобы мусор не копился, если воркер упадет
             await self.redis.expire(key, 3600)
-
-            # Если длина 1, значит до этого списка не было или он был пуст
             return list_len == 1
         except Exception as e:
             logger.error(f"Ошибка при записи в Redis буфер: {e}")
@@ -62,21 +53,12 @@ class RedisManager:
         """
         key = f"pact_buffer:{conversation_id}"
         try:
-            # Атомарно забираем все элементы и удаляем ключ
-            # Мы использовали LPUSH (добавление в голову), 
-            # поэтому забираем через LRANGE и потом разворачиваем, 
-            # либо используем RPOP в цикле.
-            
-            # Способ через pipeline для надежности:
             async with self.redis.pipeline(transaction=True) as pipe:
                 pipe.lrange(key, 0, -1)
                 pipe.delete(key)
                 results = await pipe.execute()
             
-            messages_raw = results[0] # Это список строк JSON
-            
-            # Десериализуем и разворачиваем (т.к. пушили через LPUSH, 
-            # последние сообщения оказались в начале списка)
+            messages_raw = results[0]
             messages = [json.loads(m) for m in messages_raw]
             messages.reverse() 
             
@@ -90,7 +72,7 @@ class RedisManager:
         try:
             messages_raw = await self.redis.lrange(key, 0, -1)
             messages = [json.loads(m) for m in messages_raw]
-            messages.reverse() # Чтобы были в хронологическом порядке
+            messages.reverse()
             return messages
         except Exception as e:
             logger.error(f"Ошибка при чтении буфера Redis: {e}")
@@ -101,8 +83,6 @@ class RedisManager:
         key = f"pact_buffer:{conversation_id}"
         await self.redis.delete(key)
 
-# Создаем глобальный экземпляр менеджера
 redis_manager = RedisManager()
 
-# Для docker-compose (taskiq scheduler) выносим объект scheduler отдельно
 scheduler = redis_manager.scheduler
