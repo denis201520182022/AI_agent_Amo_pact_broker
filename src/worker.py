@@ -39,7 +39,7 @@ broker = (
     .with_result_backend(result_backend)
 )
 
-ogger = setup_logging("worker")
+logger = setup_logging("worker")
 
 @broker.on_event("startup")
 async def worker_startup(state):
@@ -407,7 +407,7 @@ async def handle_crm_completion(dialogue: Dialogue, final_state: Dict):
             status_id=target_status
         )
         logger.info(f"🎯 Сделка {lead_id} переведена в воронку {target_pipeline} на статус {target_status}")
-        
+
     if current_step in [Steps.FINAL_HANDOVER, Steps.CONSULT_FINAL, Steps.CONSULT_INFO]:
         summary = (
             "📋 АНКЕТА ИЗ БОТА:\n"
